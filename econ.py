@@ -125,3 +125,5 @@ def producers_surplus(q, k, p0, epsilon):
     """
     p = price_estimation_on_es_value(k, p0, q, epsilon)
     return p * q - p0 * q - k * (epsilon / (epsilon + 1) * np.power(q, 1 + 1. / epsilon))
+
+

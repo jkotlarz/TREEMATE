@@ -261,8 +261,17 @@ def harvest_area_past(area, harvest_age_min, harvest_age_max, timeback_projectio
     
     return retY, retHVA
 
+def set_basic_harvest_probabilites(areas, harvest_model= pd.read_csv(const.dir_data+const.file_harvest_model, sep='\t'),transmitance = 0.01):
+    hps=[]
+    for i_s in range(len(areas)): 
+        harvest_age_min = int(harvest_model.hmin[i_s])
+        harvest_age_max = int(harvest_model.hmax[i_s])
+        hp = harvest_probability(areas[i_s], harvest_age_min, harvest_age_max, 5, transmitance)
+        hps.append(hp)
+    return hps
+
 # Function that allows predicting the distribution of cultivation areas by age in the future based on the current distribution
-def age_area_prediction(a, harvest_age_min, harvest_age_max, years=100, percent = 0.01):
+def age_area_prediction(a, harvest_age_min, harvest_age_max, years=100, percent = 0.01, hps_i=[]):
     """
     Allows predicting the distribution of cultivation areas by age in the future based on the current distribution
     and the distribution of harvesting probability.
@@ -277,11 +286,16 @@ def age_area_prediction(a, harvest_age_min, harvest_age_max, years=100, percent 
 #    afterH = a[harvest_age_max:harvest_age_max + 5].mean()
     #percent = afterH / beforeH
     
-    hp = harvest_probability(a, harvest_age_min, harvest_age_max, 5, percent)  # Calculate the distribution of harvesting probability
+    
+    if len(hps_i) == 0:
+        hp = harvest_probability(a, harvest_age_min, harvest_age_max, 5, percent)  # Calculate the distribution of harvesting probability
+    
     setA = []
     ca = [v for v in a]
     setA.append(ca)
     for y in range(years):
+        if len(hps_i) > 0:
+            hp = hps_i
         harvest = sum(hp * ca)
         ca = [v for v in setA[len(setA) - 1]]
         for age in range(len(ca) - 1, 0, -1):
@@ -321,7 +335,7 @@ def age_area_prediction_age_harvest_varies(a, harvest_age_min, harvest_age_max, 
     return setA
 
 # Function that allows predicting the harvesting area based on the age distribution of cultivation areas
-def harvest_area_prediction(area, harvest_age_min, harvest_age_max, time_projection, curr_year=2022, transmittance=0.01):
+def harvest_area_prediction(area, harvest_age_min, harvest_age_max, time_projection, curr_year=2022, transmittance=0.01, hps_i=[]):
     """
     Allows predicting the harvesting area based on the age distribution of cultivation areas.
 
@@ -332,7 +346,7 @@ def harvest_area_prediction(area, harvest_age_min, harvest_age_max, time_project
     :param curr_year: Current year from which the prediction starts (int, default is 2022)
     :return: Two lists: list of years and list of corresponding harvesting areas in those years (list, list)
     """
-    age_area = age_area_prediction(area, harvest_age_min, harvest_age_max, time_projection, transmittance)
+    age_area = age_area_prediction(area, harvest_age_min, harvest_age_max, time_projection, transmittance, hps_i)
     retY = []
     retHVA = []
     for y in range(time_projection):
@@ -432,16 +446,15 @@ def get_initial_areas(bdl_folder):
     return areas
 
 
-def predict_harvest_areas(areas, time_projection):
+def predict_harvest_areas(areas, time_projection, hps=[], harvest_model= pd.read_csv(const.dir_data+const.file_harvest_model, sep='\t')):
     species = const.species
     n_species = len(species)
-
-    harvest_model = pd.read_csv(const.dir_data+const.file_harvest_model, sep='\t')
-
+    
+#    harvest_model = pd.read_csv(const.dir_data+const.file_harvest_model, sep='\t')
     harvest_areas = []
-
     for i_s in range(n_species):
-        harvest_areas_species = harvest_area_prediction(areas[i_s], int(harvest_model.hmin[i_s]), int(harvest_model.hmax[i_s]), time_projection)
+        
+        harvest_areas_species = harvest_area_prediction(areas[i_s], int(harvest_model.hmin[i_s]), int(harvest_model.hmax[i_s]), time_projection, 2022, 0.01 , hps[i_s])
         harvest_areas.append(harvest_areas_species[1])
     return harvest_areas
 
